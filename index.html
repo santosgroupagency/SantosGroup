@@ -63,6 +63,7 @@ textarea{min-height:100px;resize:vertical}
 input:hover,select:hover,textarea:hover{border-color:var(--line-2)}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acid);background:var(--panel-3)}
 .bad{border-color:var(--err)!important}
+.dsel{display:flex;gap:8px}.dsel select{flex:1;min-width:0}.dsel.bad select{border-color:var(--err)!important}
 
 /* Actuaciones */
 .acts{display:flex;flex-direction:column;gap:16px}
@@ -446,7 +447,16 @@ footer a{color:inherit}
 
           <div class="f soc"><label for="promCif" class="req">CIF de la empresa</label><input id="promCif" placeholder="Letra y 8 caracteres, sin espacios ni guiones"></div>
           <div class="f full soc"><label for="promEmpresa" class="req">Razón social</label><input id="promEmpresa" autocomplete="organization" placeholder="Nombre completo de la empresa (S.L., S.A.…)"><span class="hint">Tal como figura en el CIF</span></div>
-          <div class="f full soc aut"><label for="promDomicilio" class="req" id="lblDom">Domicilio social</label><input id="promDomicilio" placeholder="Vía y número, código postal, municipio (provincia)"></div>
+          <div class="f full soc"><label for="promDomicilio" class="req" id="lblDom">Domicilio social</label><input id="promDomicilio" placeholder="Vía y número, código postal, municipio (provincia)"></div>
+
+          <div class="sub-h aut">Tu domicilio</div>
+          <div class="f aut"><label for="autVia" class="req">Tipo de vía</label><select id="autVia"><option value="">Elige una…</option><option>Calle</option><option>Avenida</option><option>Plaza</option><option value="otro">Otro</option></select></div>
+          <div class="f aut" id="autOtroBox"><label for="autOtro" class="req">¿Qué tipo de vía?</label><input id="autOtro" placeholder="Tipo de vía (paseo, camino, carretera…)"></div>
+          <div class="f aut"><label for="autNombre" class="req">Nombre de la vía</label><input id="autNombre" placeholder="Nombre de la vía, sin el tipo"></div>
+          <div class="f aut"><label for="autNumero" class="req">Número</label><input id="autNumero" placeholder="Número, piso y puerta · «s/n» si no tiene"></div>
+          <div class="f aut"><label for="autCp" class="req">Código postal</label><input id="autCp" inputmode="numeric" maxlength="5" placeholder="5 cifras"></div>
+          <div class="f aut"><label for="autMunicipio" class="req">Municipio</label><input id="autMunicipio" placeholder="Nombre del municipio"></div>
+          <div class="f aut"><label for="autProvincia" class="req">Provincia</label><input id="autProvincia" placeholder="Nombre de la provincia"></div>
 
           <div class="sub-h ayto">Datos para la factura (opcional)</div>
           <div class="note ayto">La factura se presenta por FACe tras la actuación. Si ahora no tienes estos datos, déjalos en blanco y te los pediremos antes de enviar el contrato.</div>
@@ -490,11 +500,11 @@ footer a{color:inherit}
     <div class="act-h"><span class="act-n">Actuación <b class="n">1</b><small class="who"></small></span><button type="button" class="rm">Quitar</button></div>
     <div class="artists" role="radiogroup" aria-label="Artista"></div>
     <div class="grid">
-      <div class="f"><label class="req">Fecha de la actuación</label><input type="date" data-f="fechaEvento"></div>
-      <div class="f"><label class="req">Hora de inicio de la actuación</label><input type="time" data-f="horaInicio"></div>
-      <div class="f"><label>Hora de fin de la actuación</label><input type="time" data-f="horaFin"><span class="hint fin">Si la dejas vacía, contamos 90 minutos desde el inicio</span></div>
-      <div class="f"><label class="req">Fecha de la prueba de sonido</label><input type="date" data-f="fechaPrueba"><span class="hint">Por defecto, el mismo día de la actuación</span></div>
-      <div class="f"><label class="req">Hora de la prueba de sonido</label><input type="time" data-f="horaPrueba" value="22:00"><span class="hint">Por defecto, a las 22:00. Cámbiala si es otra hora.</span></div>
+      <div class="f"><label class="req">Fecha de la actuación</label><input type="hidden" data-f="fechaEvento" data-sel="fecha"></div>
+      <div class="f"><label class="req">Hora de inicio de la actuación</label><input type="hidden" data-f="horaInicio" data-sel="hora"></div>
+      <div class="f"><label>Hora de fin de la actuación</label><input type="hidden" data-f="horaFin" data-sel="hora-opc"><span class="hint fin">Si la dejas vacía, contamos 90 minutos desde el inicio</span></div>
+      <div class="f"><label class="req">Fecha de la prueba de sonido</label><input type="hidden" data-f="fechaPrueba" data-sel="fecha"><span class="hint">Por defecto, el mismo día de la actuación</span></div>
+      <div class="f"><label class="req">Hora de la prueba de sonido</label><input type="hidden" data-f="horaPrueba" data-sel="hora" value="22:00"><span class="hint">Por defecto, a las 22:00. Cámbiala si es otra hora.</span></div>
     </div>
   </div>
 </template>
@@ -517,12 +527,63 @@ function pintarTipo(){
     el.hidden = !( (t==="sociedad" && el.classList.contains("soc")) || (t==="autonomo" && el.classList.contains("aut")) || (t==="ayuntamiento" && el.classList.contains("ayto")) );
   });
   if(t==="ayuntamiento") each(".conc", function(el){ el.hidden = $("cargoTipo").value !== "concejal"; });
+  if(t==="autonomo") $("autOtroBox").hidden = $("autVia").value !== "otro";
   $("lblDom").textContent = t==="autonomo" ? "Domicilio" : "Domicilio social";
   $("promNombre").setAttribute("autocomplete", t==="ayuntamiento" ? "off" : "name");
 }
 each("input[name=tipo]", function(el){ el.addEventListener("change", pintarTipo); });
 $("cargoTipo").addEventListener("change", pintarTipo);
+$("autVia").addEventListener("change", pintarTipo);
+$("autCp").addEventListener("input", function(){ this.value = this.value.replace(/\D/g, "").slice(0, 5); });
 pintarTipo();
+
+// ---- Fechas y horas: solo desplegables (no se pueden escribir) ----
+// El input oculto guarda el valor (AAAA-MM-DD o HH:MM); los desplegables lo cambian.
+var DESP_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+function opt(sel, v, tx){ var o = document.createElement("option"); o.value = v; o.textContent = tx; sel.appendChild(o); }
+function desplegables(inp){
+  var tipoSel = inp.getAttribute("data-sel"), box = document.createElement("div"), sels = [];
+  box.className = "dsel";
+  if(tipoSel === "fecha"){
+    var dd = document.createElement("select"), mm = document.createElement("select"), aa = document.createElement("select");
+    opt(dd, "", "Día"); for(var i = 1; i <= 31; i++) opt(dd, String(i).padStart(2,"0"), i);
+    opt(mm, "", "Mes"); MESES.forEach(function(m, j){ opt(mm, String(j+1).padStart(2,"0"), m); });
+    var y0 = new Date().getFullYear(); opt(aa, "", "Año"); for(var y = y0; y <= y0 + 2; y++) opt(aa, String(y), y);
+    dd.setAttribute("aria-label","Día"); mm.setAttribute("aria-label","Mes"); aa.setAttribute("aria-label","Año");
+    sels = [dd, mm, aa];
+  } else {
+    var hh = document.createElement("select");
+    opt(hh, "", tipoSel === "hora-opc" ? "Sin hora de fin" : "Elige la hora");
+    for(var m = 0; m < 1440; m += 15){ var h = String(Math.floor(m/60)).padStart(2,"0") + ":" + String(m%60).padStart(2,"0"); opt(hh, h, h); }
+    sels = [hh];
+  }
+  sels.forEach(function(s){ box.appendChild(s); });
+  inp.parentNode.insertBefore(box, inp);
+  var leer = function(){
+    if(sels.length === 1) return sels[0].value;
+    var d = sels[0].value, mo = sels[1].value, y = sels[2].value;
+    if(!d || !mo || !y) return "";
+    var f = new Date(Number(y), Number(mo)-1, Number(d));
+    return f.getMonth() === Number(mo)-1 ? y + "-" + mo + "-" + d : "";   // 31 de febrero → no vale
+  };
+  var pintar = function(v){
+    if(sels.length === 1){ sels[0].value = v || ""; return; }
+    var p = (v || "").split("-"); sels[2].value = p[0] || ""; sels[1].value = p[1] || ""; sels[0].value = p[2] || "";
+  };
+  Object.defineProperty(inp, "value", {
+    configurable: true,
+    get: function(){ return DESP_VALUE.get.call(inp); },
+    set: function(v){ DESP_VALUE.set.call(inp, v); pintar(v); }
+  });
+  pintar(DESP_VALUE.get.call(inp));
+  sels.forEach(function(s){ s.addEventListener("change", function(){
+    var v = leer(); inp._incompleta = !v && sels.some(function(x){ return x.value; });
+    DESP_VALUE.set.call(inp, v);
+    inp.dispatchEvent(new Event("input", {bubbles:true}));
+  }); });
+  // la marca roja de «falta» se ve en los desplegables
+  new MutationObserver(function(){ box.classList.toggle("bad", inp.classList.contains("bad")); }).observe(inp, {attributes:true, attributeFilter:["class"]});
+}
 
 // ---- Bloques de actuación ----
 function campo(act, f){ return act.querySelector('[data-f="'+f+'"]'); }
@@ -542,6 +603,7 @@ function addAct(copiarDe){
     var lg = l.querySelector(".logo"); lg.style.backgroundImage = "url(" + a.logo + ")"; lg.setAttribute("aria-label", a.nombre);
     box.appendChild(l);
   });
+  each("input[data-sel]", desplegables, node);
   var fp = campo(node, "fechaPrueba"), fe = campo(node, "fechaEvento");
   node._pruebaManual = false;
   if(copiarDe){
@@ -555,7 +617,8 @@ function addAct(copiarDe){
   hf.addEventListener("input", pintarFin);
   pintarFin();
   fe.addEventListener("input", function(){ if(!node._pruebaManual) fp.value = fe.value; node.classList.remove("bad"); fe.classList.remove("bad"); });
-  fp.addEventListener("input", function(){ node._pruebaManual = !!fp.value && fp.value !== fe.value; if(!fp.value){ fp.value = fe.value; node._pruebaManual = false; } });
+  campo(node, "horaPrueba").addEventListener("input", function(){ this.classList.remove("bad"); });
+  fp.addEventListener("input", function(){ node._pruebaManual = !!fp.value && fp.value !== fe.value; if(!fp.value && !fp._incompleta){ fp.value = fe.value; node._pruebaManual = false; } });
   each("input[type=radio]", function(r){ r.addEventListener("change", function(){ node.querySelector(".who").textContent = nombreArtista(node); node.classList.remove("bad"); }); }, node);
   node.querySelector(".rm").addEventListener("click", function(){ node.remove(); renumerar(); });
   $("acts").appendChild(node);
@@ -606,11 +669,20 @@ function cargoTexto(d){
 var COMUNES = ["trato","promNombre","promDni","promEmail","promMovil","evento","recinto","ciudad","provincia","codigoPostal","observaciones"];
 var POR_TIPO = {
   sociedad: ["promEmpresa","promCif","promDomicilio"],
-  autonomo: ["promDomicilio"],
+  autonomo: [],
   ayuntamiento: ["aytoMunicipio","aytoNif","aytoSede","partidaPresupuestaria","dir3OficinaContable","dir3OrganoGestor","dir3UnidadTramitadora"]
 };
 var OBLIG = ["promNombre","promDni","promEmail","promMovil","evento","recinto","ciudad","provincia","codigoPostal","dirVia","dirNombre","dirNumero"];
-var OBLIG_TIPO = { sociedad:["promEmpresa","promCif","promDomicilio"], autonomo:["promDomicilio"], ayuntamiento:["aytoMunicipio","aytoNif","aytoSede"] };
+var OBLIG_TIPO = { sociedad:["promEmpresa","promCif","promDomicilio"], autonomo:["autVia","autNombre","autNumero","autCp","autMunicipio","autProvincia"], ayuntamiento:["aytoMunicipio","aytoNif","aytoSede"] };
+// Domicilio del autónomo: se compone igual que la dirección del recinto
+function domicilioAutonomo(d){
+  var via = $("autVia").value === "otro" ? $("autOtro").value.trim() : $("autVia").value;
+  var num = $("autNumero").value.trim().replace(/^n[º°o.]?\s*/i, "");
+  num = /^s\/?n$/i.test(num) ? "s/n" : "nº " + num;
+  d.domVia = via; d.domNombre = $("autNombre").value.trim(); d.domNumero = num;
+  d.domCodigoPostal = $("autCp").value.trim(); d.domMunicipio = $("autMunicipio").value.trim(); d.domProvincia = $("autProvincia").value.trim();
+  return via + " " + d.domNombre + ", " + num + ", " + d.domCodigoPostal + " " + d.domMunicipio + " (" + d.domProvincia + ")";
+}
 
 $("frm").addEventListener("submit", function(ev){
   ev.preventDefault();
@@ -619,12 +691,17 @@ $("frm").addEventListener("submit", function(ev){
   campos.forEach(function(k){ d[k] = $(k).value.trim(); });
   var oblig = OBLIG.concat(OBLIG_TIPO[t]);
   if($("dirVia").value === "otro") oblig = oblig.concat(["dirOtro"]);
+  if(t === "autonomo" && $("autVia").value === "otro") oblig = oblig.concat(["autOtro"]);
   if(t === "ayuntamiento" && $("cargoTipo").value === "concejal") oblig = oblig.concat(["cargoArea","decretoNum","decretoFecha"]);
   var primero = null, faltaArtista = false;
   each("#frm input, #frm select, #frm textarea", function(el){ el.classList.remove("bad"); });
   oblig.forEach(function(k){ if(!$(k).value.trim()){ $(k).classList.add("bad"); primero = primero || $(k); } });
   if(d.codigoPostal && !/^\d{5}$/.test(d.codigoPostal)){ $("codigoPostal").classList.add("bad"); primero = primero || $("codigoPostal"); }
   if(d.promEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.promEmail)){ $("promEmail").classList.add("bad"); primero = primero || $("promEmail"); }
+  if(t === "autonomo"){
+    if($("autCp").value && !/^\d{5}$/.test($("autCp").value)){ $("autCp").classList.add("bad"); primero = primero || $("autCp"); }
+    d.promDomicilio = domicilioAutonomo(d);
+  }
   if(t === "ayuntamiento") d.firmanteCargo = cargoTexto(d);
   d.direccion = direccionTexto(d);
 
