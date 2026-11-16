@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Firma del contrato · Santos Group</title>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+  :root{--am:#F8FF00;--fondo:#0b0b0b;--panel:#161616;--linea:#2c2c2c;--txt:#f2f2f2;--gris:#a8a8a8}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fondo);color:var(--txt);font:16px/1.5 Arial,Helvetica,sans-serif}
+  header{border-bottom:3px solid var(--am);padding:18px 20px}
+  header b{color:var(--am);letter-spacing:.08em}
+  main{max-width:760px;margin:0 auto;padding:22px 18px 60px}
+  h1{font-size:24px;margin:0 0 6px}
+  .panel{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:18px;margin:16px 0}
+  .dato{display:flex;gap:10px;padding:4px 0}.dato span{color:var(--gris);min-width:110px}
+  label{display:block;font-weight:bold;margin:14px 0 6px}
+  input[type=text]{width:100%;padding:11px 12px;border-radius:7px;border:1px solid var(--linea);background:#0f0f0f;color:var(--txt);font-size:16px}
+  .ayuda{color:var(--gris);font-size:13px;margin-top:4px}
+  canvas{width:100%;height:190px;background:#fff;border-radius:8px;touch-action:none;display:block}
+  button,.btn{display:inline-block;background:var(--am);color:#000;border:0;border-radius:8px;padding:12px 20px;font-weight:bold;font-size:16px;cursor:pointer;text-decoration:none}
+  button.sec{background:transparent;color:var(--txt);border:1px solid var(--linea);padding:8px 14px;font-size:14px}
+  button:disabled{opacity:.5;cursor:default}
+  .chk{display:flex;gap:10px;align-items:flex-start;margin:16px 0}.chk input{margin-top:5px;width:18px;height:18px}
+  .err{color:#ff6b6b;font-weight:bold}.ok{color:var(--am);font-weight:bold}
+  iframe{width:100%;height:520px;border:0;border-radius:8px;background:#fff}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><b>SANTOS GROUP</b> · Firma electrónica del contrato</header>
+<main>
+  <p id="estado">Cargando el contrato…</p>
+
+  <section id="zona" hidden>
+    <h1>Contrato de actuación</h1>
+    <div class="panel" id="resumen"></div>
+
+    <div class="panel">
+      <b>1. Lee el contrato</b>
+      <p class="ayuda">Incluye al final el rider técnico y de hospitality.</p>
+      <iframe id="visor" title="Contrato"></iframe>
+      <p><a class="btn" id="descargar" download="contrato.pdf">Descargar el contrato (PDF)</a></p>
+    </div>
+
+    <div class="panel">
+      <b>2. Tus datos y tu firma</b>
+      <label for="nombre">Nombre y apellidos de quien firma</label>
+      <input type="text" id="nombre" autocomplete="name">
+      <p class="ayuda">Como aparecen en el documento de identidad.</p>
+      <label for="dni">DNI o NIE</label>
+      <input type="text" id="dni" autocomplete="off">
+      <p class="ayuda">DNI: 8 cifras y letra · NIE: letra, 7 cifras y letra.</p>
+      <label>Firma</label>
+      <canvas id="lienzo"></canvas>
+      <p><button type="button" class="sec" id="borrar">Borrar la firma</button> <span class="ayuda">Firma con el dedo o con el ratón.</span></p>
+      <div class="chk"><input type="checkbox" id="acepto"><label for="acepto" style="margin:0;font-weight:normal">He leído el contrato y acepto firmarlo electrónicamente. Sé que esta firma tiene el mismo valor que mi firma en papel.</label></div>
+      <button type="button" id="firmar">Firmar el contrato</button>
+      <p id="msg"></p>
+    </div>
+  </section>
+
+  <section id="hecho" hidden class="panel">
+    <h1 class="ok">Contrato firmado</h1>
+    <p id="hechoTxt"></p>
+    <p><a class="btn" id="descFirmado" download="contrato-firmado.pdf" hidden>Descargar el contrato firmado</a></p>
+  </section>
+</main>
+<script>
+var API = "https://script.google.com/macros/s/AKfycbydq0miSQ557QF6UpU_Mmr_kauf5deAL1yMPGxvbMYYzrnPtJbWVND7Deg9PMvFhOwgzA/exec";
+var $ = function(id){ return document.getElementById(id); };
+var t = new URLSearchParams(location.search).get("t") || "";
+var original = null, datos = null, trazos = 0;
+
+function b64aBytes(b){ var s=atob(b), u=new Uint8Array(s.length); for(var i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }
+function bytesAb64(u){ var s="", n=0x8000; for(var i=0;i<u.length;i+=n) s+=String.fromCharCode.apply(null,u.subarray(i,i+n)); return btoa(s); }
+function esc(s){ return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+function latin(s){ return String(s||"").normalize("NFC").replace(/[^\x20-\x7E\xA0-\xFF€·–—]/g,""); }
+
+async function cargar(){
+  if(!/^[a-f0-9]{32}$/.test(t)){ $("estado").innerHTML='<span class="err">El enlace de firma no es válido. Revisa que lo has copiado entero.</span>'; return; }
+  try{
+    var j = await fetch(API+"?accion=firma_datos&t="+t,{redirect:"follow"}).then(function(r){return r.json();});
+    if(!j.ok) throw new Error(j.error||"error");
+    datos = j;
+    if(j.firmado){ $("estado").hidden=true; $("hecho").hidden=false; $("hechoTxt").textContent="Este contrato ya se firmó el "+j.firmadoEl+". Gracias."; return; }
+    original = b64aBytes(j.pdf);
+    var url = URL.createObjectURL(new Blob([original],{type:"application/pdf"}));
+    $("visor").src = url; $("descargar").href = url;
+    $("resumen").innerHTML = '<div class="dato"><span>Artista</span><b>'+esc(j.artista)+'</b></div><div class="dato"><span>Evento</span><b>'+esc(j.evento)+'</b></div><div class="dato"><span>Fecha</span><b>'+esc(j.fecha)+'</b></div><div class="dato"><span>Contrata</span><b>'+esc(j.promotor)+'</b></div>';
+    $("estado").hidden=true; $("zona").hidden=false; prepararLienzo();
+  }catch(e){ $("estado").innerHTML='<span class="err">No se ha podido cargar el contrato ('+esc(e.message)+'). Inténtalo más tarde o responde al correo que te enviamos.</span>'; }
+}
+
+function prepararLienzo(){
+  var c=$("lienzo"), r=window.devicePixelRatio||1, ctx;
+  function medir(){ var b=c.getBoundingClientRect(); c.width=b.width*r; c.height=b.height*r; ctx=c.getContext("2d"); ctx.scale(r,r); ctx.lineWidth=2.4; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#111"; trazos=0; }
+  medir(); window.addEventListener("resize",medir);
+  var dibujando=false;
+  function pos(e){ var b=c.getBoundingClientRect(); return {x:e.clientX-b.left,y:e.clientY-b.top}; }
+  c.addEventListener("pointerdown",function(e){ dibujando=true; c.setPointerCapture(e.pointerId); var p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); });
+  c.addEventListener("pointermove",function(e){ if(!dibujando) return; var p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); trazos++; });
+  c.addEventListener("pointerup",function(){ dibujando=false; });
+  $("borrar").onclick=function(){ ctx.clearRect(0,0,c.width,c.height); trazos=0; };
+}
+
+async function sha256(u){ var h=await crypto.subtle.digest("SHA-256",u); return Array.from(new Uint8Array(h)).map(function(x){return x.toString(16).padStart(2,"0");}).join(""); }
+
+async function firmar(){
+  var nombre=$("nombre").value.trim(), dni=$("dni").value.trim().toUpperCase().replace(/[\s.]/g,"");
+  var m=$("msg"); m.className="err";
+  if(nombre.split(/\s+/).length<2){ m.textContent="Escribe tu nombre y apellidos."; return; }
+  if(!/^([0-9]{8}-?[A-Z]|[XYZ]-?[0-9]{7}-?[A-Z])$/.test(dni)){ m.textContent="El DNI o NIE no tiene un formato válido."; return; }
+  if(trazos<10){ m.textContent="Falta tu firma en el recuadro blanco."; return; }
+  if(!$("acepto").checked){ m.textContent="Marca la casilla de aceptación."; return; }
+  $("firmar").disabled=true; m.className=""; m.textContent="Firmando…";
+  try{
+    var ahora=new Date(), hash=await sha256(original);
+    var doc=await PDFLib.PDFDocument.load(original);
+    var png=await doc.embedPng($("lienzo").toDataURL("image/png"));
+    var f=await doc.embedFont(PDFLib.StandardFonts.Helvetica), fb=await doc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    var p=doc.addPage([595.28,841.89]), y=780, negro=PDFLib.rgb(0,0,0), gris=PDFLib.rgb(.35,.35,.35);
+    function linea(txt,font,size,color){ p.drawText(latin(txt),{x:56,y:y,size:size,font:font,color:color||negro,maxWidth:483,lineHeight:size*1.3}); y-=size*1.6; }
+    p.drawRectangle({x:0,y:800,width:595.28,height:41.89,color:negro});
+    p.drawText("SANTOS GROUP · FIRMA ELECTRÓNICA DEL CONTRATO",{x:56,y:815,size:12,font:fb,color:PDFLib.rgb(.973,1,0)});
+    y=760;
+    linea("Contrato de actuación de "+datos.artista,fb,14);
+    linea("Evento: "+datos.evento,f,11); linea("Fecha de la actuación: "+datos.fecha,f,11); linea("Contrata: "+datos.promotor,f,11);
+    y-=10; linea("FIRMA DEL PROMOTOR",fb,12);
+    linea("Nombre: "+nombre,f,11); linea("DNI/NIE: "+dni,f,11);
+    linea("Fecha y hora: "+ahora.toLocaleString("es-ES")+"  ("+ahora.toISOString()+")",f,11);
+    var dims=png.scale(1), esc_=Math.min(260/dims.width,110/dims.height);
+    p.drawImage(png,{x:56,y:y-110,width:dims.width*esc_,height:dims.height*esc_}); y-=130;
+    p.drawLine({start:{x:56,y:y},end:{x:320,y:y},thickness:.6,color:gris}); y-=24;
+    linea("El firmante declara haber leído el contrato y lo acepta mediante firma electrónica sencilla (Reglamento (UE) 910/2014, eIDAS), a través del enlace personal enviado por WEARE A4A S.L.",f,9,gris);
+    y-=6;
+    linea("Identificador del enlace: "+t,f,9,gris);
+    linea("Huella SHA-256 del contrato firmado (páginas anteriores): "+hash,f,8,gris);
+    linea("Navegador: "+navigator.userAgent.slice(0,160),f,8,gris);
+    var bytes=await doc.save();
+    var r=await fetch(API,{method:"POST",redirect:"follow",body:JSON.stringify({accion:"firmar",t:t,nombre:nombre,dni:dni,acepta:true,hash:hash,pdf:bytesAb64(bytes)})}).then(function(r){return r.json();});
+    if(!r.ok) throw new Error(r.error||"error");
+    $("zona").hidden=true; $("hecho").hidden=false;
+    $("hechoTxt").textContent="Gracias, "+nombre.split(" ")[0]+". El contrato ha quedado firmado y Santos Group ya tiene una copia. Descarga la tuya:";
+    var a=$("descFirmado"); a.href=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"})); a.hidden=false;
+  }catch(e){ m.className="err"; m.textContent="No se ha podido firmar ("+e.message+"). Inténtalo de nuevo."; $("firmar").disabled=false; }
+}
+$("firmar").onclick=firmar;
+cargar();
+</script>
+</body>
+</html>
