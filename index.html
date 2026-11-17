@@ -447,16 +447,16 @@ footer a{color:inherit}
 
           <div class="f soc"><label for="promCif" class="req">CIF de la empresa</label><input id="promCif" placeholder="Letra y 8 caracteres, sin espacios ni guiones"></div>
           <div class="f full soc"><label for="promEmpresa" class="req">Razón social</label><input id="promEmpresa" autocomplete="organization" placeholder="Nombre completo de la empresa (S.L., S.A.…)"><span class="hint">Tal como figura en el CIF</span></div>
-          <div class="f full soc"><label for="promDomicilio" class="req" id="lblDom">Domicilio social</label><input id="promDomicilio" placeholder="Vía y número, código postal, municipio (provincia)"></div>
 
+          <div class="sub-h soc">Domicilio social</div>
           <div class="sub-h aut">Tu domicilio</div>
-          <div class="f aut"><label for="autVia" class="req">Tipo de vía</label><select id="autVia"><option value="">Elige una…</option><option>Calle</option><option>Avenida</option><option>Plaza</option><option value="otro">Otro</option></select></div>
-          <div class="f aut" id="autOtroBox"><label for="autOtro" class="req">¿Qué tipo de vía?</label><input id="autOtro" placeholder="Tipo de vía (paseo, camino, carretera…)"></div>
-          <div class="f aut"><label for="autNombre" class="req">Nombre de la vía</label><input id="autNombre" placeholder="Nombre de la vía, sin el tipo"></div>
-          <div class="f aut"><label for="autNumero" class="req">Número</label><input id="autNumero" placeholder="Número, piso y puerta · «s/n» si no tiene"></div>
-          <div class="f aut"><label for="autCp" class="req">Código postal</label><input id="autCp" inputmode="numeric" maxlength="5" placeholder="5 cifras"></div>
-          <div class="f aut"><label for="autMunicipio" class="req">Municipio</label><input id="autMunicipio" placeholder="Nombre del municipio"></div>
-          <div class="f aut"><label for="autProvincia" class="req">Provincia</label><input id="autProvincia" placeholder="Nombre de la provincia"></div>
+          <div class="f soc aut"><label for="autVia" class="req">Tipo de vía</label><select id="autVia"><option value="">Elige una…</option><option>Calle</option><option>Avenida</option><option>Plaza</option><option value="otro">Otro</option></select></div>
+          <div class="f soc aut" id="autOtroBox"><label for="autOtro" class="req">¿Qué tipo de vía?</label><input id="autOtro" placeholder="Tipo de vía (paseo, camino, carretera…)"></div>
+          <div class="f soc aut"><label for="autNombre" class="req">Nombre de la vía</label><input id="autNombre" placeholder="Nombre de la vía, sin el tipo"></div>
+          <div class="f soc aut"><label for="autNumero" class="req">Número</label><input id="autNumero" placeholder="Número, piso y puerta · «s/n» si no tiene"></div>
+          <div class="f soc aut"><label for="autCp" class="req">Código postal</label><input id="autCp" inputmode="numeric" maxlength="5" placeholder="5 cifras"></div>
+          <div class="f soc aut"><label for="autMunicipio" class="req">Municipio</label><input id="autMunicipio" placeholder="Nombre del municipio"></div>
+          <div class="f soc aut"><label for="autProvincia" class="req">Provincia</label><input id="autProvincia" placeholder="Nombre de la provincia"></div>
 
           <div class="sub-h ayto">Datos para la factura (opcional)</div>
           <div class="note ayto">La factura se presenta por FACe tras la actuación. Si ahora no tienes estos datos, déjalos en blanco y te los pediremos antes de enviar el contrato.</div>
@@ -527,8 +527,7 @@ function pintarTipo(){
     el.hidden = !( (t==="sociedad" && el.classList.contains("soc")) || (t==="autonomo" && el.classList.contains("aut")) || (t==="ayuntamiento" && el.classList.contains("ayto")) );
   });
   if(t==="ayuntamiento") each(".conc", function(el){ el.hidden = $("cargoTipo").value !== "concejal"; });
-  if(t==="autonomo") $("autOtroBox").hidden = $("autVia").value !== "otro";
-  $("lblDom").textContent = t==="autonomo" ? "Domicilio" : "Domicilio social";
+  if(t!=="ayuntamiento") $("autOtroBox").hidden = $("autVia").value !== "otro";
   $("promNombre").setAttribute("autocomplete", t==="ayuntamiento" ? "off" : "name");
 }
 each("input[name=tipo]", function(el){ el.addEventListener("change", pintarTipo); });
@@ -668,13 +667,13 @@ function cargoTexto(d){
 // ---- Envío ----
 var COMUNES = ["trato","promNombre","promDni","promEmail","promMovil","evento","recinto","ciudad","provincia","codigoPostal","observaciones"];
 var POR_TIPO = {
-  sociedad: ["promEmpresa","promCif","promDomicilio"],
+  sociedad: ["promEmpresa","promCif"],
   autonomo: [],
   ayuntamiento: ["aytoMunicipio","aytoNif","aytoSede","partidaPresupuestaria","dir3OficinaContable","dir3OrganoGestor","dir3UnidadTramitadora"]
 };
 var OBLIG = ["promNombre","promDni","promEmail","promMovil","evento","recinto","ciudad","provincia","codigoPostal","dirVia","dirNombre","dirNumero"];
-var OBLIG_TIPO = { sociedad:["promEmpresa","promCif","promDomicilio"], autonomo:["autVia","autNombre","autNumero","autCp","autMunicipio","autProvincia"], ayuntamiento:["aytoMunicipio","aytoNif","aytoSede"] };
-// Domicilio del autónomo: se compone igual que la dirección del recinto
+var OBLIG_TIPO = { sociedad:["promEmpresa","promCif","autVia","autNombre","autNumero","autCp","autMunicipio","autProvincia"], autonomo:["autVia","autNombre","autNumero","autCp","autMunicipio","autProvincia"], ayuntamiento:["aytoMunicipio","aytoNif","aytoSede"] };
+// Domicilio de la empresa (domicilio social) y del autónomo: se compone igual que la dirección del recinto
 function domicilioAutonomo(d){
   var via = $("autVia").value === "otro" ? $("autOtro").value.trim() : $("autVia").value;
   var num = $("autNumero").value.trim().replace(/^n[º°o.]?\s*/i, "");
@@ -691,14 +690,14 @@ $("frm").addEventListener("submit", function(ev){
   campos.forEach(function(k){ d[k] = $(k).value.trim(); });
   var oblig = OBLIG.concat(OBLIG_TIPO[t]);
   if($("dirVia").value === "otro") oblig = oblig.concat(["dirOtro"]);
-  if(t === "autonomo" && $("autVia").value === "otro") oblig = oblig.concat(["autOtro"]);
+  if((t === "autonomo" || t === "sociedad") && $("autVia").value === "otro") oblig = oblig.concat(["autOtro"]);
   if(t === "ayuntamiento" && $("cargoTipo").value === "concejal") oblig = oblig.concat(["cargoArea","decretoNum","decretoFecha"]);
   var primero = null, faltaArtista = false;
   each("#frm input, #frm select, #frm textarea", function(el){ el.classList.remove("bad"); });
   oblig.forEach(function(k){ if(!$(k).value.trim()){ $(k).classList.add("bad"); primero = primero || $(k); } });
   if(d.codigoPostal && !/^\d{5}$/.test(d.codigoPostal)){ $("codigoPostal").classList.add("bad"); primero = primero || $("codigoPostal"); }
   if(d.promEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.promEmail)){ $("promEmail").classList.add("bad"); primero = primero || $("promEmail"); }
-  if(t === "autonomo"){
+  if(t === "autonomo" || t === "sociedad"){
     if($("autCp").value && !/^\d{5}$/.test($("autCp").value)){ $("autCp").classList.add("bad"); primero = primero || $("autCp"); }
     d.promDomicilio = domicilioAutonomo(d);
   }
